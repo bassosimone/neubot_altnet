@@ -221,7 +221,7 @@ class Stream(Pollable):
     #
     # Receive path: the protocol invokes recv() to start an async recv()
     # operation, the poller invokes handle_read() when the socket becomes
-    # readbable, handle_read() invokes recv_complete() when the recv()
+    # readable, handle_read() invokes recv_complete() when the recv()
     # is complete.
     #
 
