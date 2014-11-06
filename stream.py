@@ -184,7 +184,7 @@ class Stream(Pollable):
 
     #
     # Close path: the close() function simply tells the poller to generate
-    # the handle_close() event, the handle_close() function is reentrant and
+    # the handle_close() event, the handle_close() function is idempotent and
     # invokes the registered callback functions.
     #
 
