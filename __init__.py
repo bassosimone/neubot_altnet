@@ -21,4 +21,4 @@
 # along with Neubot.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-''' Neubot API released on 2012-11-18 '''
+''' Neubot API released on 2012-10-14 '''
