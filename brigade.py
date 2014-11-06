@@ -1,8 +1,9 @@
 # neubot/brigade.py
 
 #
-# Copyright (c) 2012 Simone Basso <bassosimone@gmail.com>,
-#  NEXA Center for Internet & Society at Politecnico di Torino
+# Copyright (c) 2012, 2014
+#     Nexa Center for Internet & Society, Politecnico di Torino (DAUIN)
+#     and Simone Basso <bassosimone@gmail.com>.
 #
 # This file is part of Neubot <http://www.neubot.org/>.
 #
@@ -25,7 +26,7 @@
 # Python3-ready: yes
 
 from collections import deque
-from neubot import six
+from . import six
 
 NEWLINE = six.b('\n')
 EMPTY = six.b('')

@@ -1,8 +1,9 @@
 # neubot/listener.py
 
 #
-# Copyright (c) 2010-2012 Simone Basso <bassosimone@gmail.com>,
-#  NEXA Center for Internet & Society at Politecnico di Torino
+# Copyright (c) 2010-2012, 2014
+#     Nexa Center for Internet & Society, Politecnico di Torino (DAUIN)
+#     and Simone Basso <bassosimone@gmail.com>.
 #
 # This file is part of Neubot <http://www.neubot.org/>.
 #
@@ -26,14 +27,14 @@
 # Python3-ready: yes
 
 from neubot.pollable import Pollable
-from neubot.poller import POLLER
 
 class Listener(Pollable):
 
     ''' Pollable socket listener '''
 
-    def __init__(self, parent, sock, endpoint, sslconfig, sslcert):
+    def __init__(self, poller, parent, sock, endpoint, sslconfig, sslcert):
         Pollable.__init__(self)
+        self.poller = poller
         self.parent = parent
         self.lsock = sock
         self.endpoint = endpoint
@@ -43,7 +44,7 @@ class Listener(Pollable):
         # Want to listen "forever"
         self.watchdog = -1
 
-        POLLER.set_readable(self)
+        self.poller.set_readable(self)
         self.parent.handle_listen(self)
 
     def __repr__(self):

@@ -1,8 +1,9 @@
 # neubot/sslstream.py
 
 #
-# Copyright (c) 2010-2012 Simone Basso <bassosimone@gmail.com>,
-#  NEXA Center for Internet & Society at Politecnico di Torino
+# Copyright (c) 2010-2012, 2014
+#     Nexa Center for Internet & Society, Politecnico di Torino (DAUIN)
+#     and Simone Basso <bassosimone@gmail.com>.
 #
 # This file is part of Neubot <http://www.neubot.org/>.
 #
@@ -28,14 +29,10 @@ import logging
 import ssl
 import sys
 
-if __name__ == '__main__':
-    sys.path.insert(0, '.')
-
 from neubot.pollable import Pollable
 from neubot.pollable import SUCCESS
 from neubot.pollable import WANT_READ
 from neubot.pollable import WANT_WRITE
-from neubot.poller import POLLER
 
 class SSLWrapper(object):
     ''' Wrapper for an SSL socket '''
@@ -94,19 +91,20 @@ class Handshaker(Pollable):
     # of the wrapped stream is invoked, and this class is destroyed.
     #
 
-    def __init__(self, stream):
+    def __init__(self, poller, stream):
         Pollable.__init__(self)
+        self.poller = poller
         self.opaque = stream
 
     def fileno(self):
         return self.opaque.fileno()
 
     def handle_read(self):
-        POLLER.unset_readable(self)
+        self.poller.unset_readable(self)
         self.handshake()
 
     def handle_write(self):
-        POLLER.unset_writable(self)
+        self.poller.unset_writable(self)
         self.handshake()
 
     def handshake(self):
@@ -116,9 +114,9 @@ class Handshaker(Pollable):
         except ssl.SSLError:
             exception = sys.exc_info()[1]
             if exception.args[0] == ssl.SSL_ERROR_WANT_READ:
-                POLLER.set_readable(self)
+                self.poller.set_readable(self)
             elif exception.args[0] == ssl.SSL_ERROR_WANT_WRITE:
-                POLLER.set_writable(self)
+                self.poller.set_writable(self)
             else:
                 raise
         else:
@@ -131,7 +129,7 @@ class Handshaker(Pollable):
         self.opaque = None
         stream.handle_close()
 
-def initialise(stream, sock, sslcert):
+def initialise(poller, stream, sock, sslcert):
     ''' Initialise SSL socket '''
 
     logging.debug('stream_ssl: initialise()')
@@ -150,5 +148,5 @@ def initialise(stream, sock, sslcert):
     stream.sock = SSLWrapper(ssl.SSLSocket(sock, do_handshake_on_connect=False,
                                    certfile=sslcert, server_side=server_side))
 
-    handshaker = Handshaker(stream)
+    handshaker = Handshaker(poller, stream)
     handshaker.handshake()

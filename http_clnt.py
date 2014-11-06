@@ -1,8 +1,9 @@
 # neubot/http_clnt.py
 
 #
-# Copyright (c) 2011-2012 Simone Basso <bassosimone@gmail.com>,
-#  NEXA Center for Internet & Society at Politecnico di Torino
+# Copyright (c) 2011-2012, 2014
+#     Nexa Center for Internet & Society, Politecnico di Torino (DAUIN)
+#     and Simone Basso <bassosimone@gmail.com>.
 #
 # This file is part of Neubot <http://www.neubot.org/>.
 #
@@ -27,11 +28,11 @@
 
 import logging
 
-from neubot.brigade import Brigade
-from neubot.handler import Handler
-from neubot.stream import Stream
+from .brigade import Brigade
+from .handler import Handler
+from .stream import Stream
 
-from neubot import six
+from .import six
 
 MAXLINE = 512
 MAXPIECE = 524288
@@ -104,8 +105,8 @@ class HttpClient(Handler):
         ''' Creates an HTTP stream '''
         logging.debug('http_clnt: stream setup... in progress')
         context = ClientContext(extra, connection_made, connection_lost)
-        Stream(sock, self._handle_connection_made, self._handle_connection_lost,
-          sslconfig, sslcert, context)
+        Stream(self.poller, sock, self._handle_connection_made,
+          self._handle_connection_lost, sslconfig, sslcert, context)
 
     def _handle_connection_made(self, stream):
         ''' Internally handles the CONNECTION_MADE event '''

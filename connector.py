@@ -1,8 +1,9 @@
 # neubot/connector.py
 
 #
-# Copyright (c) 2010-2012 Simone Basso <bassosimone@gmail.com>,
-#  NEXA Center for Internet & Society at Politecnico di Torino
+# Copyright (c) 2010-2012, 2014
+#     Nexa Center for Internet & Society, Politecnico di Torino (DAUIN)
+#     and Simone Basso <bassosimone@gmail.com>.
 #
 # This file is part of Neubot <http://www.neubot.org/>.
 #
@@ -28,19 +29,20 @@
 import collections
 import logging
 
-from neubot.defer import Deferred
 from neubot.pollable import Pollable
-from neubot.poller import POLLER
 
 from neubot import utils_net
 from neubot import utils
+
+from .defer import Deferred
 
 class Connector(Pollable):
 
     ''' Pollable socket connector '''
 
-    def __init__(self, parent, endpoint, prefer_ipv6, sslconfig, extra):
+    def __init__(self, poller, parent, endpoint, prefer_ipv6, sslconfig, extra):
         Pollable.__init__(self)
+        self.poller = poller
 
         self.epnts = collections.deque()
         self.parent = parent
@@ -76,7 +78,7 @@ class Connector(Pollable):
     def _connection_failed(self):
         ''' Failed to connect first available epnt '''
         if self.sock:
-            POLLER.unset_writable(self)
+            self.poller.unset_writable(self)
             self.sock = None  # MUST be below unset_writable()
         if not self.epnts:
             self.aterror.callback_each_np(self)
@@ -89,7 +91,7 @@ class Connector(Pollable):
         if sock:
             self.sock = sock
             self.timestamp = utils.ticks()
-            POLLER.set_writable(self)
+            self.poller.set_writable(self)
         else:
             self._connection_failed()
 
@@ -97,7 +99,7 @@ class Connector(Pollable):
         return self.sock.fileno()
 
     def handle_write(self):
-        POLLER.unset_writable(self)
+        self.poller.unset_writable(self)
         if not utils_net.isconnected(self.endpoint, self.sock):
             self._connection_failed()
             return

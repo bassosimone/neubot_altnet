@@ -1,8 +1,9 @@
 # neubot/stream.py
 
 #
-# Copyright (c) 2010-2012 Simone Basso <bassosimone@gmail.com>,
-#  NEXA Center for Internet & Society at Politecnico di Torino
+# Copyright (c) 2010-2012, 2014
+#     Nexa Center for Internet & Society, Politecnico di Torino (DAUIN)
+#     and Simone Basso <bassosimone@gmail.com>.
 #
 # This file is part of Neubot <http://www.neubot.org/>.
 #
@@ -30,17 +31,16 @@ import os
 import socket
 import sys
 
-from neubot.defer import Deferred
 from neubot.pollable import Pollable
-from neubot.poller import POLLER
-
 from neubot.pollable import CONNRST
 from neubot.pollable import SUCCESS
 from neubot.pollable import WANT_READ
 from neubot.pollable import WANT_WRITE
 
 from neubot import utils_net
-from neubot import six
+
+from .defer import Deferred
+from . import six
 
 # Soft errors on sockets, i.e. we can retry later
 SOFT_ERRORS = (errno.EAGAIN, errno.EWOULDBLOCK, errno.EINTR)
@@ -121,10 +121,11 @@ class Stream(Pollable):
     # reducing explict code dependency.
     #
 
-    def __init__(self, sock, connection_made, connection_lost, sslconfig,
-                 sslcert, opaque):
+    def __init__(self, poller, sock, connection_made, connection_lost,
+                 sslconfig, sslcert, opaque):
         Pollable.__init__(self)
 
+        self.poller = poller
         self.filenum = sock.fileno()
         self.myname = utils_net.getsockname(sock)
         self.peername = utils_net.getpeername(sock)
@@ -167,19 +168,19 @@ class Stream(Pollable):
         # accept() code already needs to setup a try..except to route any
         # error away from the listening socket.
         #
-        from neubot import sslstream
+        from . import sslstream
 
         #
         # If there is SSL support, initialise() deals transparently with SSL
         # negotiation, and invokes connection_made() when done.  Errors are
-        # routed to the POLLER, which generates CLOSE events accordingly.
+        # routed to the self.poller, which generates CLOSE events accordingly.
         #
-        sslstream.initialise(self, sock, sslcert)
+        sslstream.initialise(self.poller, self, sock, sslcert)
 
     def _connection_made_error(self, exception):
         ''' Invoked when connection_made() callback fails '''
         logging.warning('stream: connection_made() failed: %s', str(exception))
-        POLLER.close(self)
+        self.poller.close(self)
 
     #
     # Close path: the close() function simply tells the poller to generate
@@ -193,7 +194,7 @@ class Stream(Pollable):
 
     def close(self):
         ''' Close the stream '''
-        POLLER.close(self)
+        self.poller.close(self)
 
     def handle_close(self):
 
@@ -241,7 +242,7 @@ class Stream(Pollable):
             logging.debug('stream: recv() is blocked')
             return
 
-        POLLER.set_readable(self)
+        self.poller.set_readable(self)
 
     def handle_read(self):
 
@@ -252,9 +253,9 @@ class Stream(Pollable):
         #
         if self.recv_blocked:
             logging.debug('stream: handle_read() => handle_write()')
-            POLLER.set_writable(self)
+            self.poller.set_writable(self)
             if self.recv_bytes <= 0:
-                POLLER.unset_readable(self)
+                self.poller.unset_readable(self)
             self.recv_blocked = False
             self.handle_write()
             return
@@ -271,7 +272,7 @@ class Stream(Pollable):
         if status == SUCCESS and octets:
             self.bytes_in += len(octets)
             self.recv_bytes = 0
-            POLLER.unset_readable(self)
+            self.poller.unset_readable(self)
             self.recv_complete(self, octets)
             return
 
@@ -280,21 +281,21 @@ class Stream(Pollable):
 
         if status == WANT_WRITE:
             logging.debug('stream: blocking send()')
-            POLLER.unset_readable(self)
-            POLLER.set_writable(self)
+            self.poller.unset_readable(self)
+            self.poller.set_writable(self)
             self.send_blocked = True
             return
 
         if status == SUCCESS and not octets:
             logging.debug('stream: EOF')
             self.eof = True
-            POLLER.close(self)
+            self.poller.close(self)
             return
 
         if status == CONNRST and not octets:
             logging.debug('stream: RST ')
             self.conn_rst = True
-            POLLER.close(self)
+            self.poller.close(self)
             return
 
         raise RuntimeError('stream: invalid status')
@@ -321,7 +322,7 @@ class Stream(Pollable):
             logging.debug('stream: send() is blocked')
             return
 
-        POLLER.set_writable(self)
+        self.poller.set_writable(self)
 
     def handle_write(self):
 
@@ -332,9 +333,9 @@ class Stream(Pollable):
         #
         if self.send_blocked:
             logging.debug('stream: handle_write() => handle_read()')
-            POLLER.set_readable(self)
+            self.poller.set_readable(self)
             if not self.send_octets:
-                POLLER.unset_writable(self)
+                self.poller.unset_writable(self)
             self.send_blocked = False
             self.handle_read()
             return
@@ -352,7 +353,7 @@ class Stream(Pollable):
             self.bytes_out += count
 
             if count == len(self.send_octets):
-                POLLER.unset_writable(self)
+                self.poller.unset_writable(self)
                 self.send_octets = EMPTY_STRING
                 self.send_complete(self)
                 return
@@ -368,15 +369,15 @@ class Stream(Pollable):
 
         if status == WANT_READ:
             logging.debug('stream: blocking recv()')
-            POLLER.unset_writable(self)
-            POLLER.set_readable(self)
+            self.poller.unset_writable(self)
+            self.poller.set_readable(self)
             self.recv_blocked = True
             return
 
         if status == CONNRST and count == 0:
             logging.debug('stream: RST')
             self.conn_rst = True
-            POLLER.close(self)
+            self.poller.close(self)
             return
 
         if status == SUCCESS and count < 0:

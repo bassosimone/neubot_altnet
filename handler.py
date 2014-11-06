@@ -1,8 +1,9 @@
 # neubot/handler.py
 
 #
-# Copyright (c) 2010-2012 Simone Basso <bassosimone@gmail.com>,
-#  NEXA Center for Internet & Society at Politecnico di Torino
+# Copyright (c) 2010-2012, 2014
+#     Nexa Center for Internet & Society, Politecnico di Torino (DAUIN)
+#     and Simone Basso <bassosimone@gmail.com>.
 #
 # This file is part of Neubot <http://www.neubot.org/>.
 #
@@ -25,8 +26,8 @@
 # Adapted from neubot/net/stream.py
 # Python3-ready: yes
 
-from neubot.connector import Connector
-from neubot.listener import Listener
+from .connector import Connector
+from .listener import Listener
 
 from neubot import utils_net
 
@@ -36,6 +37,9 @@ class Handler(object):
 
     # Inspired by BitTorrent handle class
 
+    def __init__(self, poller):
+        self.poller = poller
+
     def listen(self, endpoint, prefer_ipv6, sslconfig, sslcert):
         ''' Listen() at endpoint '''
         sockets = utils_net.listen(endpoint, prefer_ipv6)
@@ -43,7 +47,7 @@ class Handler(object):
             self.handle_listen_error(endpoint)
             return
         for sock in sockets:
-            Listener(self, sock, endpoint, sslconfig, sslcert)
+            Listener(self.poller, self, sock, endpoint, sslconfig, sslcert)
 
     def handle_listen_error(self, endpoint):
         ''' Handle the LISTEN_ERROR event '''
@@ -62,7 +66,8 @@ class Handler(object):
 
     def connect(self, endpoint, prefer_ipv6, sslconfig, extra):
         ''' Connect() to endpoint '''
-        return Connector(self, endpoint, prefer_ipv6, sslconfig, extra)
+        return Connector(self.poller, self, endpoint, prefer_ipv6,
+                         sslconfig, extra)
 
     def handle_connect_error(self, connector):
         ''' Handle the CONNECT_ERROR event '''
