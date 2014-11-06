@@ -1,7 +1,7 @@
 # Neubot API 2012.10.14
 
 This is the networking API added to Neubot on 2012-10-14 when Neubot
-0.4.15.6 was released. It is based on the `Poller` and `Pollable` APIs
+0.4.15.5 was released. It is based on the `Poller` and `Pollable` APIs
 as well as on the functionality provided by `utils_net`.
 
 Since the 2012.10.14 API is only used by `mlabns` and by the `raw`
